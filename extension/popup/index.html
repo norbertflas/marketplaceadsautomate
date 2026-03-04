@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Allegro Ads Automate</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--acc:#f97316;--acc2:#ea6c0a;--bg:#fff;--bgs:#f8fafc;--border:#e2e8f0;--text:#1e293b;--muted:#64748b;--ok:#16a34a;--warn:#d97706;--err:#dc2626;--r:8px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:var(--text);background:var(--bg);width:380px;min-height:520px;max-height:600px;overflow:hidden;display:flex;flex-direction:column}
+
+/* Header */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:13px 15px 11px;border-bottom:1px solid var(--border);background:var(--bgs);flex-shrink:0}
+.logo{display:flex;align-items:center;gap:7px;font-weight:700;font-size:15px;color:var(--acc)}
+.badge{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.badge-standard{background:#dbeafe;color:#1d4ed8}.badge-pro{background:#f3e8ff;color:#7c3aed}
+.badge-free{background:#f1f5f9;color:#64748b}.badge-trial{background:#fef9c3;color:#854d0e}
+
+/* Tabs */
+.tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.tab{flex:1;padding:9px 4px;border:none;background:none;cursor:pointer;font-size:11px;color:var(--muted);border-bottom:2px solid transparent;display:flex;flex-direction:column;align-items:center;gap:3px;transition:color .15s,border-color .15s}
+.tab:hover{color:var(--text)}.tab.on{color:var(--acc);border-bottom-color:var(--acc)}
+.tab-icon{font-size:15px}
+
+/* Content */
+.pane{flex:1;overflow-y:auto;padding:14px;display:none}.pane.on{display:block}
+.pane::-webkit-scrollbar{width:4px}.pane::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* Card */
+.card{background:var(--bgs);border:1px solid var(--border);border-radius:var(--r);padding:13px;margin-bottom:11px}
+.card-title{font-weight:600;font-size:13px;margin-bottom:10px}
+
+/* Form */
+.fg{margin-bottom:9px}
+.fg label{display:block;font-size:12px;color:var(--muted);font-weight:500;margin-bottom:3px}
+.fg input,.fg select{width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--text);background:var(--bg);transition:border-color .15s}
+.fg input:focus,.fg select:focus{outline:none;border-color:var(--acc)}
+.row{display:flex;gap:8px}.row .fg{flex:1}
+
+/* Buttons */
+.btn{padding:8px 13px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:5px;transition:background .15s}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-p{background:var(--acc);color:#fff}.btn-p:hover:not(:disabled){background:var(--acc2)}
+.btn-s{background:var(--border);color:var(--text)}.btn-s:hover:not(:disabled){background:#cbd5e1}
+.btn-g{background:none;color:var(--muted)}.btn-g:hover{background:var(--bgs)}
+.btn-d{background:#fee2e2;color:var(--err)}.btn-d:hover{background:#fecaca}
+.btn-sm{padding:5px 9px;font-size:12px}.btn-full{width:100%;justify-content:center}
+.btns{display:flex;gap:7px;flex-wrap:wrap}
+
+/* Slider */
+.slrow{display:flex;align-items:center;gap:10px}
+.slrow input[type=range]{flex:1;accent-color:var(--acc)}
+.slval{font-weight:700;font-size:16px;color:var(--acc);min-width:52px;text-align:right}
+
+/* Alert */
+.alert{padding:10px 12px;border-radius:6px;font-size:12px;margin-bottom:10px;line-height:1.5}
+.a-warn{background:#fef9c3;color:#713f12;border:1px solid #fde047}
+.a-info{background:#eff6ff;color:#1e3a8a;border:1px solid #bfdbfe}
+.a-ok{background:#f0fdf4;color:#14532d;border:1px solid #bbf7d0}
+.a-err{background:#fef2f2;color:#7f1d1d;border:1px solid #fecaca}
+
+/* Empty */
+.empty{text-align:center;padding:28px 14px;color:var(--muted)}
+.empty-icon{font-size:38px;margin-bottom:10px}
+.empty-title{font-weight:600;font-size:14px;margin-bottom:5px;color:var(--text)}
+.empty-desc{font-size:12px;line-height:1.5}
+
+/* Toggle */
+.tog{position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0}
+.tog input{opacity:0;width:0;height:0}
+.tog-sl{position:absolute;cursor:pointer;inset:0;background:#cbd5e1;border-radius:20px;transition:.2s}
+.tog-sl::before{content:'';position:absolute;width:14px;height:14px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.tog input:checked+.tog-sl{background:var(--acc)}
+.tog input:checked+.tog-sl::before{transform:translateX(16px)}
+
+/* Day picker */
+.days{display:flex;gap:4px;flex-wrap:wrap}
+.day{width:34px;height:34px;border-radius:50%;border:1px solid var(--border);background:var(--bg);cursor:pointer;font-size:11px;font-weight:600;color:var(--muted);transition:all .15s;display:flex;align-items:center;justify-content:center}
+.day.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+
+/* Schedule list */
+.si{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border)}
+.si:last-child{border-bottom:none}
+.si-info{flex:1;min-width:0}
+.si-name{font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.si-desc{font-size:11px;color:var(--muted);margin-top:2px}
+.si-btns{display:flex;gap:3px;flex-shrink:0}
+
+/* History list */
+.hi{display:flex;align-items:flex-start;gap:8px;padding:9px 0;border-bottom:1px solid var(--border);font-size:12px}
+.hi:last-child{border-bottom:none}
+.hi-main{flex:1;min-width:0}
+.hi-name{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hi-detail{color:var(--muted);margin-top:2px}
+.hi-src{font-size:10px;margin-top:2px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em}
+.hi-meta{text-align:right;flex-shrink:0}
+.hi-time{color:var(--muted);font-size:11px}
+.hi-done{text-decoration:line-through;opacity:.5}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0;margin-top:2px}
+
+/* Settings row */
+.srow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.srow:last-child{margin-bottom:0}
+.srow-info{flex:1}
+.srow-info strong{display:block;font-size:13px}
+.srow-info span{font-size:12px;color:var(--muted);line-height:1.4;margin-top:3px;display:block}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="hdr">
+  <div class="logo">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    Allegro Ads Automate
+  </div>
+  <span class="badge badge-free" id="plan-badge">FREE</span>
+</header>
+
+<!-- Tabs -->
+<nav class="tabs">
+  <button class="tab on" data-tab="dashboard"><span class="tab-icon">⚡</span>Dashboard</button>
+  <button class="tab" data-tab="scheduler"><span class="tab-icon">🕐</span>Harmonogram</button>
+  <button class="tab" data-tab="history"><span class="tab-icon">📋</span>Historia</button>
+  <button class="tab" data-tab="settings"><span class="tab-icon">⚙️</span>Ustawienia</button>
+</nav>
+
+<!-- ── Dashboard ──────────────────────────────────────────────────────── -->
+<div class="pane on" id="pane-dashboard">
+
+  <div id="stats-card" class="card" style="display:none">
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted)">
+      <span>Kampanie:</span><strong id="stat-total" style="color:var(--text)">0</strong>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:4px">
+      <span>Aktywne:</span><strong id="stat-active" style="color:var(--ok)">0</strong>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚡ Globalna zmiana CPC</div>
+
+    <div class="fg">
+      <label>Typ zmiany</label>
+      <select id="action-type">
+        <option value="decrease_pct">−X% (procentowo w dół)</option>
+        <option value="increase_pct">+X% (procentowo w górę)</option>
+        <option value="set">Ustaw na X gr</option>
+        <option value="increase_abs">+X gr (dodaj)</option>
+        <option value="decrease_abs">−X gr (odejmij)</option>
+      </select>
+    </div>
+
+    <div class="fg">
+      <label>Wartość: <strong id="val-display" style="color:var(--acc)">10%</strong></label>
+      <div class="slrow">
+        <input type="range" id="val-slider" min="1" max="100" value="10">
+        <input type="number" id="val-input" value="10" min="1" max="9999" style="width:68px">
+      </div>
+    </div>
+
+    <div class="fg">
+      <label>Filtruj kampanie</label>
+      <select id="filter-status">
+        <option value="">Wszystkie kampanie</option>
+        <option value="ACTIVE">Tylko aktywne</option>
+        <option value="PAUSED">Tylko wstrzymane</option>
+      </select>
+    </div>
+
+    <div class="btns">
+      <button class="btn btn-s" id="btn-preview">Podgląd</button>
+      <button class="btn btn-p" id="btn-apply" style="flex:1">Zastosuj do wszystkich</button>
+    </div>
+  </div>
+
+  <div id="dash-result"></div>
+
+  <div id="no-allegro-tab" class="alert a-info" style="display:none">
+    ℹ️ Otwórz panel <strong>salescenter.allegro.com</strong> i przejdź do kampanii, by załadować dane.
+  </div>
+  <div id="no-license-dash" style="display:none">
+    <div class="alert a-warn">⚠️ Aktywuj licencję w zakładce Ustawienia, aby korzystać z pełnych funkcji.</div>
+  </div>
+
+  <button class="btn btn-g btn-sm btn-full" id="btn-refresh" style="margin-top:4px">↻ Odśwież kampanie</button>
+</div>
+
+<!-- ── Scheduler ──────────────────────────────────────────────────────── -->
+<div class="pane" id="pane-scheduler">
+  <div class="card">
+    <div class="card-title">➕ Nowy harmonogram</div>
+
+    <div class="fg">
+      <label>Nazwa</label>
+      <input type="text" id="sched-name" placeholder="np. Noc -20% CPC" maxlength="50">
+    </div>
+
+    <div class="fg">
+      <label>Dni tygodnia</label>
+      <div class="days" id="sched-days">
+        <button class="day" data-d="1">Pn</button>
+        <button class="day" data-d="2">Wt</button>
+        <button class="day" data-d="3">Śr</button>
+        <button class="day" data-d="4">Cz</button>
+        <button class="day" data-d="5">Pt</button>
+        <button class="day on" data-d="6">So</button>
+        <button class="day on" data-d="0">Nd</button>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="fg">
+        <label>Godzina (0–23)</label>
+        <input type="number" id="sched-hour" min="0" max="23" value="0">
+      </div>
+      <div class="fg">
+        <label>Minuta (0–59)</label>
+        <input type="number" id="sched-min" min="0" max="59" value="0">
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="fg">
+        <label>Akcja</label>
+        <select id="sched-action">
+          <option value="decrease_pct">−X% CPC</option>
+          <option value="increase_pct">+X% CPC</option>
+          <option value="set">Ustaw CPC na X gr</option>
+          <option value="decrease_abs">−X gr CPC</option>
+          <option value="increase_abs">+X gr CPC</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Wartość</label>
+        <input type="number" id="sched-val" min="1" value="20">
+      </div>
+    </div>
+
+    <button class="btn btn-p btn-full" id="btn-add-sched" style="margin-top:4px">Dodaj harmonogram</button>
+    <div id="sched-msg"></div>
+  </div>
+
+  <div id="sched-list"></div>
+</div>
+
+<!-- ── History ────────────────────────────────────────────────────────── -->
+<div class="pane" id="pane-history">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <select id="hist-filter" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg)">
+      <option value="">Wszystkie</option>
+      <option value="manual">Ręczne</option>
+      <option value="scheduler">Harmonogram</option>
+    </select>
+    <div style="display:flex;gap:5px">
+      <button class="btn btn-g btn-sm" id="btn-hist-refresh">↻</button>
+      <button class="btn btn-d btn-sm" id="btn-hist-clear">🗑 Wyczyść</button>
+    </div>
+  </div>
+  <div id="hist-list"></div>
+</div>
+
+<!-- ── Settings ───────────────────────────────────────────────────────── -->
+<div class="pane" id="pane-settings">
+
+  <div class="card">
+    <div class="card-title">🔑 Licencja</div>
+    <div id="license-info" style="font-size:12px;color:var(--muted);margin-bottom:10px">Brak aktywnej licencji</div>
+    <div class="fg">
+      <label>Klucz licencyjny</label>
+      <input type="text" id="lic-key" placeholder="AAA-XXXX-XXXX-XXXX" autocomplete="off">
+    </div>
+    <button class="btn btn-p" id="btn-activate">Aktywuj</button>
+    <div id="lic-msg" style="margin-top:8px;font-size:12px"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📊 Raporty</div>
+    <div class="srow">
+      <div class="srow-info"><strong>Stawka VAT (%)</strong><span>Do przeliczania brutto → netto. PL: 23%</span></div>
+      <input type="number" id="set-vat" min="0" max="100" value="23" style="width:68px;padding:5px 8px;border:1px solid var(--border);border-radius:6px">
+    </div>
+    <div class="srow">
+      <div class="srow-info"><strong>Dzień początku okresu</strong><span>Allegro: 26 (rozliczenie 26–25)</span></div>
+      <input type="number" id="set-bill" min="1" max="31" value="26" style="width:68px;padding:5px 8px;border:1px solid var(--border);border-radius:6px">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🎨 Wygląd &amp; powiadomienia</div>
+    <div class="srow">
+      <div class="srow-info"><strong>Tryb ciemny panelu</strong><span>Odwraca kolory salescenter.allegro.com</span></div>
+      <label class="tog"><input type="checkbox" id="set-dark"><span class="tog-sl"></span></label>
+    </div>
+    <div class="srow" style="margin-top:10px">
+      <div class="srow-info"><strong>Powiadomienia</strong><span>Po każdym uruchomieniu harmonogramu</span></div>
+      <label class="tog"><input type="checkbox" id="set-notif" checked><span class="tog-sl"></span></label>
+    </div>
+  </div>
+
+  <button class="btn btn-p btn-full" id="btn-save-settings">Zapisz ustawienia</button>
+  <div id="settings-msg" style="margin-top:8px;font-size:12px;text-align:center"></div>
+
+  <div style="text-align:center;margin-top:14px;font-size:11px;color:var(--muted)">
+    Allegro Ads Automate v1.0.0 &nbsp;·&nbsp;
+    <a href="https://allegro-ads-automate.pl" target="_blank" style="color:var(--acc)">allegro-ads-automate.pl</a>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+// ── State ─────────────────────────────────────────────────────────────────
+let license = null;
+let campaigns = [];
+let schedules = [];
+let history = [];
+let settings = { vatRate:23, billingDayStart:26, notifications:true, darkMode:false };
+let applying = false;
+
+// ── Init ──────────────────────────────────────────────────────────────────
+async function init() {
+  await loadAll();
+  bindTabs();
+  bindDashboard();
+  bindScheduler();
+  bindHistory();
+  bindSettings();
+}
+
+async function loadAll() {
+  const [lic, sched, hist, set] = await Promise.all([
+    bg('GET_LICENSE'),
+    bg('GET_SCHEDULES'),
+    bg('GET_HISTORY'),
+    bg('GET_SETTINGS'),
+  ]);
+  license  = lic?.license  || null;
+  schedules = sched?.schedules || [];
+  history   = hist?.history   || [];
+  settings  = set?.settings   || settings;
+
+  renderPlanBadge();
+  renderScheduleList();
+  renderHistoryList();
+  renderSettingsForm();
+  loadCampaigns();
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────
+function bindTabs() {
+  document.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+      document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === `pane-${tab}`));
+    });
+  });
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────
+function bindDashboard() {
+  const atype  = $('action-type');
+  const slider = $('val-slider');
+  const input  = $('val-input');
+  const disp   = $('val-display');
+
+  function updateDisplay() {
+    const v = input.value;
+    const pct = atype.value.includes('pct');
+    disp.textContent = pct ? `${v}%` : `${v} gr`;
+    slider.max = pct ? 100 : 500;
+  }
+
+  atype.addEventListener('change', updateDisplay);
+  slider.addEventListener('input', () => { input.value = slider.value; updateDisplay(); });
+  input.addEventListener('input', () => { slider.value = input.value; updateDisplay(); });
+
+  $('btn-preview').addEventListener('click', previewChange);
+  $('btn-apply').addEventListener('click', applyChange);
+  $('btn-refresh').addEventListener('click', loadCampaigns);
+}
+
+async function loadCampaigns() {
+  const tabs = await chrome.tabs.query({ active:true, currentWindow:true });
+  const tab = tabs[0];
+  if (!tab?.url?.includes('salescenter.allegro.com')) {
+    $('no-allegro-tab').style.display = 'block';
+    return;
+  }
+  $('no-allegro-tab').style.display = 'none';
+  try {
+    const r = await chrome.tabs.sendMessage(tab.id, { type:'GET_CAMPAIGNS' });
+    if (r?.success && r.campaigns?.length) {
+      campaigns = r.campaigns;
+      const statsCard = $('stats-card');
+      statsCard.style.display = 'block';
+      $('stat-total').textContent = campaigns.length;
+      $('stat-active').textContent = campaigns.filter(c => c.status==='ACTIVE'||c.status==='ENABLED').length;
+    }
+  } catch {}
+}
+
+async function previewChange() {
+  const params = getChangeParams(true);
+  const tabs = await chrome.tabs.query({ active:true, currentWindow:true });
+  const tab = tabs[0];
+  if (!tab?.url?.includes('salescenter.allegro.com')) {
+    showResult('Otwórz panel Allegro Ads', 'err'); return;
+  }
+  try {
+    const r = await chrome.tabs.sendMessage(tab.id, { type:'GLOBAL_CPC_CHANGE', params });
+    if (r?.preview?.length) {
+      const lines = r.preview.slice(0,5).map(p=>`${esc(p.name)}: ${p.oldCpc} → ${p.newCpc} gr`).join('<br>');
+      const more = r.affectedCampaigns > 5 ? `<br><em>...i ${r.affectedCampaigns-5} więcej</em>` : '';
+      showResult(`Podgląd (${r.affectedCampaigns} kampanii):<br>${lines}${more}`, 'info');
+    } else {
+      showResult(r?.error || 'Brak danych kampanii', 'err');
+    }
+  } catch(e) { showResult(e.message, 'err'); }
+}
+
+async function applyChange() {
+  if (applying) return;
+  applying = true;
+  $('btn-apply').disabled = true;
+  $('btn-apply').textContent = 'Wykonywanie...';
+  const params = getChangeParams(false);
+  const tabs = await chrome.tabs.query({ active:true, currentWindow:true });
+  const tab = tabs[0];
+  if (!tab?.url?.includes('salescenter.allegro.com')) {
+    showResult('Otwórz panel Allegro Ads', 'err');
+    done(); return;
+  }
+  try {
+    const r = await chrome.tabs.sendMessage(tab.id, { type:'GLOBAL_CPC_CHANGE', params });
+    if (r?.success !== false) {
+      showResult(`✓ Zaktualizowano ${r.affectedCampaigns||0} kampanii${r.failed?` (${r.failed} błędów)`:''}`, 'ok');
+    } else {
+      showResult(r?.error || 'Nieznany błąd', 'err');
+    }
+  } catch(e) { showResult(e.message, 'err'); }
+  done();
+  function done() {
+    applying = false;
+    $('btn-apply').disabled = false;
+    $('btn-apply').textContent = 'Zastosuj do wszystkich';
+  }
+}
+
+function getChangeParams(dryRun) {
+  const fs = $('filter-status').value;
+  return {
+    type:    $('action-type').value,
+    value:   parseFloat($('val-input').value) || 10,
+    filters: fs ? { status: fs } : null,
+    dryRun,
+  };
+}
+
+function showResult(html, type='info') {
+  const cls = { ok:'a-ok', err:'a-err', info:'a-info', warn:'a-warn' };
+  $('dash-result').innerHTML = `<div class="alert ${cls[type]||'a-info'}">${html}</div>`;
+}
+
+// ── Scheduler ─────────────────────────────────────────────────────────────
+function bindScheduler() {
+  // Day toggle
+  document.querySelectorAll('#sched-days .day').forEach(btn => {
+    btn.addEventListener('click', () => btn.classList.toggle('on'));
+  });
+
+  $('btn-add-sched').addEventListener('click', addSchedule);
+}
+
+async function addSchedule() {
+  const name   = $('sched-name').value.trim();
+  const days   = [...document.querySelectorAll('#sched-days .day.on')].map(b => +b.dataset.d);
+  const hour   = parseInt($('sched-hour').value, 10);
+  const minute = parseInt($('sched-min').value, 10);
+  const action = $('sched-action').value;
+  const val    = parseFloat($('sched-val').value);
+
+  if (!name)       return showMsg('sched-msg', 'Podaj nazwę harmonogramu', 'err');
+  if (!days.length) return showMsg('sched-msg', 'Wybierz przynajmniej jeden dzień', 'err');
+  if (isNaN(hour)||hour<0||hour>23) return showMsg('sched-msg', 'Nieprawidłowa godzina (0–23)', 'err');
+  if (isNaN(minute)||minute<0||minute>59) return showMsg('sched-msg', 'Nieprawidłowa minuta (0–59)', 'err');
+  if (isNaN(val)||val<=0) return showMsg('sched-msg', 'Podaj wartość większą od 0', 'err');
+
+  const sched = {
+    id: `sched_${Date.now()}`,
+    name, days, hour, minute,
+    actionType: action, actionValue: val,
+    enabled: true, notify: true,
+    createdAt: new Date().toISOString(),
+  };
+
+  const r = await bg('SAVE_SCHEDULE', { schedule: sched });
+  if (r?.success) {
+    schedules = r.schedules;
+    renderScheduleList();
+    $('sched-name').value = '';
+    showMsg('sched-msg', 'Harmonogram dodany ✓', 'ok');
+  } else {
+    showMsg('sched-msg', r?.error || 'Błąd zapisu', 'err');
+  }
+}
+
+function renderScheduleList() {
+  const el = $('sched-list');
+  if (!schedules.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🕐</div><div class="empty-title">Brak harmonogramów</div><div class="empty-desc">Dodaj harmonogram powyżej.</div></div>`;
+    return;
+  }
+  const DAY_NAMES = ['Nd','Pn','Wt','Śr','Cz','Pt','So'];
+  el.innerHTML = `<div class="card" style="padding:4px 13px">${schedules.map(s=>`
+    <div class="si">
+      <label class="tog"><input type="checkbox" class="sched-tog" data-id="${s.id}" ${s.enabled?'checked':''}><span class="tog-sl"></span></label>
+      <div class="si-info">
+        <div class="si-name">${esc(s.name)}</div>
+        <div class="si-desc">${s.days.map(d=>DAY_NAMES[d]).join(', ')} o ${pad(s.hour)}:${pad(s.minute)} · ${fmtAction(s.actionType,s.actionValue)}</div>
+      </div>
+      <div class="si-btns">
+        <button class="btn btn-d btn-sm sched-del" data-id="${s.id}">✕</button>
+      </div>
+    </div>`).join('')}</div>`;
+
+  el.querySelectorAll('.sched-tog').forEach(cb => {
+    cb.addEventListener('change', async () => {
+      const id = cb.dataset.id;
+      const idx = schedules.findIndex(s=>s.id===id);
+      if (idx<0) return;
+      schedules[idx] = { ...schedules[idx], enabled: cb.checked };
+      await bg('SAVE_SCHEDULE', { schedule: schedules[idx] });
+    });
+  });
+
+  el.querySelectorAll('.sched-del').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Usunąć harmonogram?')) return;
+      const r = await bg('DELETE_SCHEDULE', { id: btn.dataset.id });
+      if (r?.success) {
+        schedules = schedules.filter(s=>s.id!==btn.dataset.id);
+        renderScheduleList();
+      }
+    });
+  });
+}
+
+function fmtAction(type, val) {
+  const labels = {
+    decrease_pct:`−${val}% CPC`, increase_pct:`+${val}% CPC`,
+    set:`CPC = ${val} gr`, decrease_abs:`−${val} gr CPC`, increase_abs:`+${val} gr CPC`,
+  };
+  return labels[type] || `${type} ${val}`;
+}
+
+// ── History ───────────────────────────────────────────────────────────────
+function bindHistory() {
+  $('btn-hist-refresh').addEventListener('click', async () => {
+    const r = await bg('GET_HISTORY');
+    history = r?.history || [];
+    renderHistoryList();
+  });
+  $('btn-hist-clear').addEventListener('click', async () => {
+    if (!confirm('Wyczyścić całą historię?')) return;
+    await bg('CLEAR_HISTORY');
+    history = [];
+    renderHistoryList();
+  });
+  $('hist-filter').addEventListener('change', renderHistoryList);
+}
+
+function renderHistoryList() {
+  const filter = $('hist-filter').value;
+  const filtered = filter ? history.filter(e=>e.source===filter||e.type===filter) : history;
+  const el = $('hist-list');
+
+  if (!filtered.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">Brak historii</div><div class="empty-desc">Historia pojawi się po pierwszej operacji.</div></div>`;
+    return;
+  }
+
+  el.innerHTML = `<div class="card" style="padding:4px 13px">${filtered.slice(0,50).map(e=>`
+    <div class="hi ${e.undone?'hi-done':''}">
+      <span class="dot" style="background:${e.success||e.status==='success'?'var(--ok)':'var(--err)'}"></span>
+      <div class="hi-main">
+        <div class="hi-name">${esc(e.campaignName||e.scheduleName||'N/A')}</div>
+        <div class="hi-detail">${fmtChange(e)}</div>
+        <div class="hi-src">${e.source==='scheduler'?'Auto':'Ręcznie'}${e.undone?' · cofnięto':''}</div>
+      </div>
+      <div class="hi-meta">
+        <div class="hi-time">${fmtTime(e.timestamp)}</div>
+        ${!e.undone && e.previousValue!==undefined
+          ? `<button class="btn btn-g btn-sm undo-btn" data-id="${e.id}" style="margin-top:4px;font-size:11px;padding:3px 6px">↩ Cofnij</button>`
+          : ''}
+      </div>
+    </div>`).join('')}</div>`;
+
+  el.querySelectorAll('.undo-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true; btn.textContent = '...';
+      const r = await bg('UNDO_CHANGE', { entryId: btn.dataset.id });
+      if (r?.success) {
+        const r2 = await bg('GET_HISTORY');
+        history = r2?.history || [];
+        renderHistoryList();
+      } else {
+        btn.disabled = false; btn.textContent = '↩ Cofnij';
+        alert(r?.error || 'Błąd cofania');
+      }
+    });
+  });
+}
+
+function fmtChange(e) {
+  if (e.type==='cpc_change') return `CPC: ${e.previousValue??'?'} → ${e.newValue??'?'} gr`;
+  if (e.type==='budget_change') return `Budżet: ${e.previousValue??'?'} → ${e.newValue??'?'} gr/dzień`;
+  if (e.type==='schedule') return `${esc(e.scheduleName||'')}: ${e.affectedCampaigns||0} kampanii`;
+  return '';
+}
+
+function fmtTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleString('pl-PL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────
+function renderSettingsForm() {
+  if (settings.vatRate !== undefined) $('set-vat').value = settings.vatRate;
+  if (settings.billingDayStart !== undefined) $('set-bill').value = settings.billingDayStart;
+  $('set-dark').checked  = !!settings.darkMode;
+  $('set-notif').checked = settings.notifications !== false;
+
+  if (license) {
+    $('lic-key').value = license.key || '';
+    $('license-info').innerHTML = `Plan: <strong>${license.plan?.toUpperCase()||'STANDARD'}</strong>` +
+      (license.expiresAt ? ` · ważna do ${new Date(license.expiresAt).toLocaleDateString('pl-PL')}` : ' · aktywna');
+  }
+}
+
+function renderPlanBadge() {
+  const badge = $('plan-badge');
+  if (!license?.valid) { badge.textContent='FREE'; badge.className='badge badge-free'; return; }
+  const plan = license.plan || 'standard';
+  badge.textContent = plan.replace('_',' ').toUpperCase();
+  badge.className = `badge badge-${plan.startsWith('agency')?'pro':plan}`;
+}
+
+function bindSettings() {
+  $('btn-activate').addEventListener('click', async () => {
+    const key = $('lic-key').value.trim();
+    if (!key) { showMsg('lic-msg','Podaj klucz licencyjny','err'); return; }
+    $('btn-activate').disabled = true;
+    $('btn-activate').textContent = 'Sprawdzanie...';
+    const r = await bg('ACTIVATE_LICENSE', { key });
+    $('btn-activate').disabled = false;
+    $('btn-activate').textContent = 'Aktywuj';
+    if (r?.success) {
+      license = r.license;
+      renderPlanBadge();
+      renderSettingsForm();
+      showMsg('lic-msg','Licencja aktywna ✓','ok');
+    } else {
+      showMsg('lic-msg', r?.error||'Błąd aktywacji','err');
+    }
+  });
+
+  $('btn-save-settings').addEventListener('click', async () => {
+    const s = {
+      vatRate:        parseInt($('set-vat').value)||23,
+      billingDayStart:parseInt($('set-bill').value)||26,
+      darkMode:       $('set-dark').checked,
+      notifications:  $('set-notif').checked,
+    };
+    await bg('SAVE_SETTINGS', { settings: s });
+    settings = s;
+    showMsg('settings-msg','Zapisano ✓','ok');
+  });
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function bg(type, extra={}) {
+  return chrome.runtime.sendMessage({ type, ...extra });
+}
+
+function $(id) { return document.getElementById(id); }
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function pad(n) { return String(n).padStart(2,'0'); }
+
+function showMsg(id, text, type='info') {
+  const cls = { ok:'a-ok', err:'a-err', info:'a-info', warn:'a-warn' };
+  $(id).innerHTML = `<div class="alert ${cls[type]||'a-info'}" style="margin-top:6px">${esc(text)}</div>`;
+  setTimeout(() => { $(id).innerHTML=''; }, 4000);
+}
+
+init();
+})();
+</script>
+</body>
+</html>

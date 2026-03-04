@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Allegro Ads Automate – Ustawienia</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--acc:#f97316;--acc2:#ea6c0a;--bg:#fff;--bgs:#f8fafc;--border:#e2e8f0;--text:#1e293b;--muted:#64748b}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:var(--text);background:var(--bgs);min-height:100vh}
+.wrap{max-width:680px;margin:0 auto}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;background:var(--bg);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10}
+.logo{display:flex;align-items:center;gap:9px;font-size:17px;font-weight:700;color:var(--acc)}
+.plan{background:var(--acc);color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.05em}
+.main{padding:24px}
+section{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:18px}
+section h2{font-size:15px;font-weight:600;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #f1f5f9}
+.frow{margin-bottom:14px}
+.frow:last-child{margin-bottom:0}
+.frow label{display:block;font-size:13px;font-weight:500;margin-bottom:4px}
+.frow input[type=number],.frow input[type=url],.frow input[type=text]{width:100%;max-width:280px;padding:8px 11px;border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--text);background:var(--bg);transition:border-color .15s}
+.frow input:focus{outline:none;border-color:var(--acc)}
+.fdesc{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5}
+.togrow{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:12px}
+.togrow:last-child{margin-bottom:0}
+.togrow .left strong{display:block;font-size:13px}
+.togrow .left span{font-size:12px;color:var(--muted);margin-top:3px;display:block}
+.tog{position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0}
+.tog input{opacity:0;width:0;height:0}
+.tog-sl{position:absolute;cursor:pointer;inset:0;background:#cbd5e1;border-radius:24px;transition:.2s}
+.tog-sl::before{content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.tog input:checked+.tog-sl{background:var(--acc)}
+.tog input:checked+.tog-sl::before{transform:translateX(20px)}
+.save-btn{background:var(--acc);color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;display:block;margin:0 auto;transition:background .15s}
+.save-btn:hover{background:var(--acc2)}
+.msg{text-align:center;font-size:13px;margin-top:10px;height:20px;color:#16a34a}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hdr">
+    <div class="logo">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      Allegro Ads Automate – Ustawienia
+    </div>
+    <span class="plan" id="plan-badge">FREE</span>
+  </header>
+
+  <main class="main">
+
+    <section>
+      <h2>📊 Raporty netto</h2>
+      <div class="frow">
+        <label>Stawka VAT (%)</label>
+        <input type="number" id="vat" min="0" max="100" value="23">
+        <div class="fdesc">Używana do przeliczania kwot brutto→netto. Polska: 23%.</div>
+      </div>
+      <div class="frow">
+        <label>Dzień początku okresu rozliczeniowego</label>
+        <input type="number" id="bill-day" min="1" max="31" value="26">
+        <div class="fdesc">Allegro rozlicza od 26. do 25. następnego miesiąca.</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>🔔 Powiadomienia</h2>
+      <div class="togrow">
+        <div class="left">
+          <strong>Powiadomienia systemowe</strong>
+          <span>Wyświetlaj powiadomienie po każdym wykonaniu harmonogramu.</span>
+        </div>
+        <label class="tog"><input type="checkbox" id="notif" checked><span class="tog-sl"></span></label>
+      </div>
+    </section>
+
+    <section>
+      <h2>🎨 Wygląd</h2>
+      <div class="togrow">
+        <div class="left">
+          <strong>Tryb ciemny panelu Allegro Ads</strong>
+          <span>Odwraca kolory salescenter.allegro.com na ciemny motyw.</span>
+        </div>
+        <label class="tog"><input type="checkbox" id="dark-mode"><span class="tog-sl"></span></label>
+      </div>
+    </section>
+
+    <section>
+      <h2>🔧 Zaawansowane</h2>
+      <div class="frow">
+        <label>URL serwera licencji</label>
+        <input type="url" id="backend-url" value="https://api.allegro-ads-automate.pl" style="max-width:100%">
+        <div class="fdesc">Nie zmieniaj bez potrzeby.</div>
+      </div>
+    </section>
+
+    <button class="save-btn" id="save-btn">Zapisz ustawienia</button>
+    <div class="msg" id="msg"></div>
+
+  </main>
+</div>
+
+<script>
+(function(){
+  async function load() {
+    const r = await chrome.runtime.sendMessage({ type:'GET_SETTINGS' });
+    const s = r?.settings || {};
+    document.getElementById('vat').value = s.vatRate ?? 23;
+    document.getElementById('bill-day').value = s.billingDayStart ?? 26;
+    document.getElementById('notif').checked = s.notifications !== false;
+    document.getElementById('dark-mode').checked = !!s.darkMode;
+    if (s.backendUrl) document.getElementById('backend-url').value = s.backendUrl;
+
+    const lic = (await chrome.runtime.sendMessage({ type:'GET_LICENSE' }))?.license;
+    if (lic?.plan) {
+      const badge = document.getElementById('plan-badge');
+      badge.textContent = lic.plan.replace('_',' ').toUpperCase();
+    }
+  }
+
+  document.getElementById('save-btn').addEventListener('click', async () => {
+    const s = {
+      vatRate:         parseInt(document.getElementById('vat').value) || 23,
+      billingDayStart: parseInt(document.getElementById('bill-day').value) || 26,
+      notifications:   document.getElementById('notif').checked,
+      darkMode:        document.getElementById('dark-mode').checked,
+      backendUrl:      document.getElementById('backend-url').value.trim() || 'https://api.allegro-ads-automate.pl',
+    };
+    await chrome.runtime.sendMessage({ type:'SAVE_SETTINGS', settings: s });
+    const msg = document.getElementById('msg');
+    msg.textContent = '✓ Zapisano';
+    setTimeout(() => { msg.textContent = ''; }, 2000);
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>
