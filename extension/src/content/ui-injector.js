@@ -148,6 +148,234 @@ export function showConfirmModal({ title, body, confirmText = 'Potwierdź', canc
   });
 }
 
+// ── Offer Stats Page – "x" remove button injection ────────────────────────
+
+const OFFER_BTN_CLASS = 'aaa-offer-remove-btn';
+let offerStatsObserver = null;
+let lastUrl = location.href;
+
+/**
+ * Watch for navigation to offer statistics pages in the Allegro SPA
+ * and inject remove buttons into offer rows.
+ */
+export function watchOfferStatsPage() {
+  injectOfferStatsButtonsIfNeeded();
+
+  // SPA navigation detection via history API patching
+  const origPushState = history.pushState.bind(history);
+  history.pushState = function (...args) {
+    origPushState(...args);
+    onUrlChange();
+  };
+  window.addEventListener('popstate', onUrlChange);
+}
+
+function onUrlChange() {
+  if (location.href !== lastUrl) {
+    lastUrl = location.href;
+    injectOfferStatsButtonsIfNeeded();
+  }
+}
+
+function isOfferStatsUrl() {
+  const url = location.href;
+  return (
+    url.includes('/statistics') ||
+    url.includes('/sponsored-offers') ||
+    url.includes('/ads/offers') ||
+    url.includes('salescenter.allegro.com/ads')
+  );
+}
+
+function injectOfferStatsButtonsIfNeeded() {
+  if (!isOfferStatsUrl()) return;
+
+  // Disconnect previous observer if any
+  if (offerStatsObserver) {
+    offerStatsObserver.disconnect();
+  }
+
+  // Try immediately and then watch for DOM changes
+  tryInjectOfferButtons();
+
+  offerStatsObserver = new MutationObserver(() => tryInjectOfferButtons());
+  offerStatsObserver.observe(document.body, { childList: true, subtree: true });
+}
+
+function tryInjectOfferButtons() {
+  // Target table rows that contain offer data.
+  // Allegro Ads panel typically renders rows as <tr> or as list items.
+  // We try multiple selectors to handle different page variants.
+  const rowSelectors = [
+    'tbody tr',
+    '[data-testid="offer-row"]',
+    '[class*="offerRow"]',
+    '[class*="offer-row"]',
+    '[class*="TableRow"]',
+  ];
+
+  let rows = [];
+  for (const sel of rowSelectors) {
+    const found = document.querySelectorAll(sel);
+    if (found.length > 0) {
+      rows = [...found];
+      break;
+    }
+  }
+
+  for (const row of rows) {
+    if (row.querySelector(`.${OFFER_BTN_CLASS}`)) continue; // already injected
+
+    // Try to extract offerId from the row
+    const offerId = extractOfferId(row);
+    if (!offerId) continue;
+
+    const btn = createRemoveButton(offerId, row);
+
+    // Find a good place to inject – last cell or action area
+    const lastCell = row.querySelector('td:last-child, [class*="actions"], [class*="Actions"]');
+    if (lastCell) {
+      lastCell.style.position = 'relative';
+      lastCell.appendChild(btn);
+    } else {
+      row.style.position = 'relative';
+      row.appendChild(btn);
+    }
+  }
+}
+
+function extractOfferId(row) {
+  // Try data attributes first
+  const candidates = [
+    row.dataset.offerId,
+    row.dataset.id,
+    row.getAttribute('data-offer-id'),
+    row.getAttribute('data-id'),
+  ];
+  for (const c of candidates) {
+    if (c) return c;
+  }
+
+  // Try links that look like offer URLs: /oferty/{id} or /offer/{id}
+  const links = row.querySelectorAll('a[href]');
+  for (const a of links) {
+    const m = a.href.match(/\/(?:oferty|offer|offers?)\/(\d+)/i);
+    if (m) return m[1];
+  }
+
+  // Try to find a numeric ID in text of the row (offer IDs are long numbers)
+  const text = row.textContent || '';
+  const m = text.match(/\b(\d{10,})\b/);
+  if (m) return m[1];
+
+  return null;
+}
+
+function createRemoveButton(offerId, row) {
+  const btn = document.createElement('button');
+  btn.className = `${EXTENSION_CLASS} ${OFFER_BTN_CLASS}`;
+  btn.title = 'Usuń ofertę z kampanii';
+  btn.textContent = '✕';
+  btn.style.cssText = `
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    transform: translateY(-50%);
+    background: transparent;
+    border: 1px solid #e53935;
+    color: #e53935;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    z-index: 100;
+    opacity: 0.7;
+    transition: opacity 0.15s;
+  `;
+
+  btn.addEventListener('mouseenter', () => { btn.style.opacity = '1'; });
+  btn.addEventListener('mouseleave', () => { btn.style.opacity = '0.7'; });
+
+  btn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    await handleOfferRemove(offerId, btn, row);
+  });
+
+  return btn;
+}
+
+async function handleOfferRemove(offerId, btn, row) {
+  // Get the campaign for this offer from the background's offer map
+  // The content script has access to the offerCampaignMap via the api-interceptor
+  let campaignId = null;
+  let campaignName = null;
+
+  try {
+    // Dynamic import to avoid circular deps
+    const { getOfferCampaignMap } = await import('./api-interceptor.js');
+    const map = getOfferCampaignMap();
+    if (map[offerId]) {
+      campaignId = map[offerId].campaignId;
+      campaignName = map[offerId].campaignName;
+    }
+  } catch {
+    /* ignore */
+  }
+
+  // Fallback: try to find campaign name from the DOM row itself
+  if (!campaignId) {
+    const campaignLink = row.querySelector('a[href*="/campaign"], a[href*="/kampanie"]');
+    if (campaignLink) {
+      const m = campaignLink.href.match(/\/(\w[\w-]+)(?:\?|$)/);
+      if (m) campaignId = m[1];
+      campaignName = campaignLink.textContent?.trim();
+    }
+  }
+
+  if (!campaignId) {
+    showToast('Nie można ustalić kampanii tej oferty. Otwórz listę kampanii i wróć do statystyk.', 'warning', 5000);
+    return;
+  }
+
+  const confirmName = campaignName ? ` z kampanii „${campaignName}"` : '';
+  const ok = confirm(`Usunąć ofertę ${offerId}${confirmName}?\n\nTej operacji nie można cofnąć.`);
+  if (!ok) return;
+
+  btn.textContent = '...';
+  btn.disabled = true;
+
+  try {
+    const result = await chrome.runtime.sendMessage({
+      type: 'REMOVE_OFFER_FROM_CAMPAIGN_BG',
+      campaignId,
+      offerId,
+    });
+
+    if (result?.success) {
+      showToast(`Oferta ${offerId} usunięta z kampanii`, 'success');
+      // Fade out and remove the row
+      row.style.transition = 'opacity 0.4s';
+      row.style.opacity = '0';
+      setTimeout(() => row.remove(), 400);
+    } else {
+      showToast(`Błąd: ${result?.error || 'Nie udało się usunąć oferty'}`, 'error');
+      btn.textContent = '✕';
+      btn.disabled = false;
+    }
+  } catch (err) {
+    showToast(`Błąd: ${err.message}`, 'error');
+    btn.textContent = '✕';
+    btn.disabled = false;
+  }
+}
+
 // ── Dark Mode ─────────────────────────────────────────────────────────────
 
 export async function applyDarkModeIfEnabled() {

@@ -9,6 +9,9 @@ let campaignCache = [];
 let lastFetchTime = 0;
 const CACHE_TTL_MS = 30000; // 30 seconds
 
+// Map of offerId -> { campaignId, campaignName } captured from intercepted API responses
+let offerCampaignMap = {};
+
 // ── Setup Interceptor ─────────────────────────────────────────────────────
 
 export function setupApiInterceptor() {
@@ -90,6 +93,20 @@ function processCampaignResponse(data, url) {
     updateCampaignCache(data.campaigns);
   } else if (data?.items) {
     updateCampaignCache(data.items);
+  }
+
+  // Capture offer->campaign mappings from stats responses
+  if (url?.includes('statistics') || url?.includes('/offers')) {
+    const offers = data?.offers || data?.items || (Array.isArray(data) ? data : []);
+    for (const o of offers) {
+      const offerId = String(o.offerId || o.id || '');
+      if (offerId && o.campaignId) {
+        offerCampaignMap[offerId] = {
+          campaignId: String(o.campaignId),
+          campaignName: o.campaignName || o.campaign?.name || '',
+        };
+      }
+    }
   }
 }
 
@@ -260,10 +277,94 @@ export async function updateCampaignBudget(campaignId, newBudgetGr) {
   return { success: true };
 }
 
+export async function removeOfferFromCampaign(campaignId, offerId) {
+  if (!sessionToken) throw new Error('No session token – navigate to Allegro Ads panel first');
+  if (!campaignId || !offerId) throw new Error('Missing campaignId or offerId');
+
+  // Try DELETE endpoint (most common pattern)
+  const endpoints = [
+    `https://edge.salescenter.allegro.com/ads/v1/campaigns/${campaignId}/offers/${offerId}`,
+    `https://salescenter.allegro.com/api/v1/ads/campaigns/${campaignId}/offers/${offerId}`,
+  ];
+
+  let lastError;
+  for (const url of endpoints) {
+    try {
+      const resp = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (resp.ok || resp.status === 204 || resp.status === 404) {
+        // Remove from offer-campaign map
+        delete offerCampaignMap[String(offerId)];
+        return { success: true };
+      }
+
+      const err = await resp.json().catch(() => ({}));
+      lastError = new Error(err?.message || `HTTP ${resp.status}`);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  throw lastError || new Error('Failed to remove offer from campaign');
+}
+
+export async function fetchCampaignStats() {
+  if (!sessionToken) throw new Error('No session token');
+
+  const endpoints = [
+    'https://edge.salescenter.allegro.com/ads/v1/campaigns/stats',
+    'https://edge.salescenter.allegro.com/ads/v1/campaigns?limit=200&include=stats',
+    'https://salescenter.allegro.com/api/v1/ads/campaigns?limit=200&include=stats',
+  ];
+
+  for (const url of endpoints) {
+    try {
+      const resp = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (resp.ok) {
+        const data = await resp.json();
+        const campaigns = data?.campaigns || data?.items || (Array.isArray(data) ? data : []);
+        // Update cache with stats
+        for (const c of campaigns) {
+          const id = c.id || c.campaignId;
+          if (!id) continue;
+          const idx = campaignCache.findIndex(x => x.id === id);
+          if (idx >= 0 && c.stats) {
+            campaignCache[idx] = { ...campaignCache[idx], stats: c.stats };
+          }
+        }
+        return campaignCache;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  // Fallback: return current cache with whatever stats we have
+  return campaignCache;
+}
+
 export function getSessionToken() {
   return sessionToken;
 }
 
 export function getCampaignCache() {
   return [...campaignCache];
+}
+
+export function getOfferCampaignMap() {
+  return { ...offerCampaignMap };
 }

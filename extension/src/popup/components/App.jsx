@@ -3,12 +3,14 @@ import Dashboard from './Dashboard.jsx';
 import Scheduler from './Scheduler.jsx';
 import History from './History.jsx';
 import Settings from './Settings.jsx';
+import Portfolio from './Portfolio.jsx';
 
 const TABS = [
-  { id: 'dashboard', label: 'CPC', icon: '⚡' },
-  { id: 'scheduler', label: 'Harmonogram', icon: '🕐' },
-  { id: 'history',   label: 'Historia', icon: '📋' },
-  { id: 'settings',  label: 'Ustawienia', icon: '⚙️' },
+  { id: 'dashboard',  label: 'CPC',        icon: '⚡' },
+  { id: 'portfolio',  label: 'Portfele',   icon: '📁' },
+  { id: 'scheduler',  label: 'Harmonogram', icon: '🕐' },
+  { id: 'history',    label: 'Historia',   icon: '📋' },
+  { id: 'settings',   label: 'Ustawienia', icon: '⚙️' },
 ];
 
 export default function App() {
@@ -72,10 +74,11 @@ export default function App() {
       </nav>
 
       <div className="tab-content">
-        {activeTab === 'dashboard' && <Dashboard license={license} />}
-        {activeTab === 'scheduler' && <Scheduler license={license} />}
-        {activeTab === 'history'   && <History license={license} />}
-        {activeTab === 'settings'  && <Settings license={license} onLicenseChange={setLicense} />}
+        {activeTab === 'dashboard'  && <Dashboard license={license} />}
+        {activeTab === 'portfolio'  && <Portfolio license={license} />}
+        {activeTab === 'scheduler'  && <Scheduler license={license} />}
+        {activeTab === 'history'    && <History license={license} />}
+        {activeTab === 'settings'   && <Settings license={license} onLicenseChange={setLicense} />}
       </div>
     </div>
   );

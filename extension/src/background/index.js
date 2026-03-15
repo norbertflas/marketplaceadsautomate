@@ -18,6 +18,7 @@ chrome.runtime.onInstalled.addListener(async ({ reason }) => {
       license: null,
       schedules: [],
       changeHistory: [],
+      portfolios: [],
       settings: {
         vatRate: 23,
         billingDayStart: 26,
@@ -26,6 +27,12 @@ chrome.runtime.onInstalled.addListener(async ({ reason }) => {
         darkMode: false,
       },
     });
+  } else {
+    // Migrate existing installs: ensure portfolios key exists
+    const { portfolios } = await chrome.storage.local.get('portfolios');
+    if (!portfolios) {
+      await chrome.storage.local.set({ portfolios: [] });
+    }
   }
 
   await registerAlarms();
@@ -66,9 +73,68 @@ async function handleMessage(message, sender) {
 
     case 'GET_STATE': {
       const data = await chrome.storage.local.get([
-        'license', 'schedules', 'changeHistory', 'settings',
+        'license', 'schedules', 'changeHistory', 'settings', 'portfolios',
       ]);
       return { success: true, data };
+    }
+
+    case 'GET_PORTFOLIOS': {
+      const { portfolios } = await chrome.storage.local.get('portfolios');
+      return { success: true, portfolios: portfolios || [] };
+    }
+
+    case 'SAVE_PORTFOLIO': {
+      const { portfolios } = await chrome.storage.local.get('portfolios');
+      const existing = portfolios || [];
+      const idx = existing.findIndex(p => p.id === message.portfolio.id);
+      if (idx >= 0) {
+        existing[idx] = message.portfolio;
+      } else {
+        existing.unshift(message.portfolio);
+      }
+      await chrome.storage.local.set({ portfolios: existing });
+      return { success: true };
+    }
+
+    case 'DELETE_PORTFOLIO': {
+      const { portfolios } = await chrome.storage.local.get('portfolios');
+      const updated = (portfolios || []).filter(p => p.id !== message.id);
+      await chrome.storage.local.set({ portfolios: updated });
+      return { success: true };
+    }
+
+    case 'UPDATE_PORTFOLIO_SPEND': {
+      // Called by content script after fetching campaign stats
+      const { portfolios } = await chrome.storage.local.get('portfolios');
+      const updated = (portfolios || []).map(p => {
+        const newSpend = message.spendMap[p.id];
+        if (newSpend !== undefined) return { ...p, spendGr: newSpend };
+        return p;
+      });
+      await chrome.storage.local.set({ portfolios: updated });
+      return { success: true };
+    }
+
+    case 'CHECK_PORTFOLIO_BUDGETS': {
+      // Forward to the active Allegro Ads tab for execution in content script
+      const tabs = await chrome.tabs.query({ url: 'https://salescenter.allegro.com/*' });
+      if (!tabs.length) return { success: false, error: 'No Allegro Ads tab open' };
+      const result = await chrome.tabs.sendMessage(tabs[0].id, {
+        type: 'CHECK_PORTFOLIO_BUDGETS',
+      });
+      return result;
+    }
+
+    case 'REMOVE_OFFER_FROM_CAMPAIGN_BG': {
+      // Route offer removal to the content script (which holds the session token)
+      const tabs = await chrome.tabs.query({ url: 'https://salescenter.allegro.com/*' });
+      if (!tabs.length) return { success: false, error: 'No Allegro Ads tab open' };
+      const result = await chrome.tabs.sendMessage(tabs[0].id, {
+        type: 'REMOVE_OFFER_FROM_CAMPAIGN',
+        campaignId: message.campaignId,
+        offerId: message.offerId,
+      });
+      return result;
     }
 
     case 'SAVE_SCHEDULE': {
