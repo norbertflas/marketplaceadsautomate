@@ -10,6 +10,7 @@ module.exports = (env, argv) => {
     entry: {
       background: './src/background/index.js',
       content: './src/content/index.js',
+      'scraper-content': './src/scraper-content/index.js',
       popup: './src/popup/index.jsx',
       options: './src/options/index.jsx',
     },

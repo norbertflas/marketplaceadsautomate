@@ -17,6 +17,15 @@
       "js": ["content.js"],
       "css": ["content.css"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://allegro.pl/*",
+        "https://www.allegro.pl/*"
+      ],
+      "js": ["scraper-content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
     }
   ],
   "options_page": "options/index.html",

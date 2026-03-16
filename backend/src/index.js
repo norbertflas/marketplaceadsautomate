@@ -15,6 +15,7 @@ const licenseRouter  = require('./routes/license.js');
 const webhookRouter  = require('./routes/webhook.js');
 const historyRouter  = require('./routes/history.js');
 const checkoutRouter = require('./routes/checkout.js');
+const scraperRouter  = require('./routes/scraper.js');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -77,6 +78,7 @@ app.use(express.json({ limit: '2mb' }));
 app.use('/api/license', apiLimiter, licenseRouter);
 app.use('/api/history', apiLimiter, historyRouter);
 app.use('/api/checkout', strictLimiter, checkoutRouter);
+app.use('/api/scraper', apiLimiter, scraperRouter);
 
 // ── Health check ──────────────────────────────────────────────────────────
 

@@ -6,9 +6,16 @@
 import { validateLicense } from './license.js';
 import { executeSchedule, registerAlarms } from './scheduler.js';
 import { syncHistory } from './history-sync.js';
+import {
+  addMonitoredProduct, removeMonitoredProduct, getMonitoredProducts,
+  toggleProductMonitoring, getSnapshots, saveSnapshot, getAlerts,
+  markAlertRead, markAllAlertsRead, clearAlerts, getMonitorSettings,
+  saveMonitorSettings, executeMonitorCheck, detectChanges, createAlert,
+} from './product-monitor.js';
 
 const ALARM_SCHEDULER = 'allegro-ads-scheduler';
 const ALARM_LICENSE_CHECK = 'allegro-ads-license-check';
+const ALARM_MONITOR_CHECK = 'allegro-scraper-monitor';
 
 // ── Startup ────────────────────────────────────────────────────────────────
 
@@ -18,6 +25,18 @@ chrome.runtime.onInstalled.addListener(async ({ reason }) => {
       license: null,
       schedules: [],
       changeHistory: [],
+      monitoredProducts: [],
+      productSnapshots: {},
+      productAlerts: [],
+      monitorSettings: {
+        checkIntervalMinutes: 60,
+        enableNotifications: true,
+        trackPrice: true,
+        trackAvailability: true,
+        trackTitle: true,
+        trackQuantity: true,
+        priceChangeThreshold: 0,
+      },
       settings: {
         vatRate: 23,
         billingDayStart: 26,
@@ -29,10 +48,12 @@ chrome.runtime.onInstalled.addListener(async ({ reason }) => {
   }
 
   await registerAlarms();
+  await registerMonitorAlarm();
 });
 
 chrome.runtime.onStartup.addListener(async () => {
   await registerAlarms();
+  await registerMonitorAlarm();
 });
 
 // ── Alarm Handler ─────────────────────────────────────────────────────────
@@ -45,10 +66,24 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     case ALARM_LICENSE_CHECK:
       await validateLicense();
       break;
+    case ALARM_MONITOR_CHECK:
+      await executeMonitorCheck();
+      break;
     default:
       break;
   }
 });
+
+// Register monitor alarm based on settings
+async function registerMonitorAlarm() {
+  const settings = await getMonitorSettings();
+  const intervalMinutes = Math.max(5, settings.checkIntervalMinutes || 60);
+
+  await chrome.alarms.clear(ALARM_MONITOR_CHECK);
+  await chrome.alarms.create(ALARM_MONITOR_CHECK, {
+    periodInMinutes: intervalMinutes,
+  });
+}
 
 // ── Message Handler ───────────────────────────────────────────────────────
 
@@ -121,6 +156,77 @@ async function handleMessage(message, sender) {
 
     case 'SYNC_HISTORY':
       return syncHistory();
+
+    // ── Scraper / Monitor messages ─────────────────────────────────────
+    case 'MONITOR_ADD_PRODUCT':
+      return addMonitoredProduct(message.product);
+
+    case 'MONITOR_REMOVE_PRODUCT':
+      return removeMonitoredProduct(message.offerId);
+
+    case 'MONITOR_GET_PRODUCTS':
+      return getMonitoredProducts();
+
+    case 'MONITOR_TOGGLE_PRODUCT':
+      return toggleProductMonitoring(message.offerId, message.enabled);
+
+    case 'MONITOR_GET_SNAPSHOTS':
+      return getSnapshots(message.offerId, message.limit);
+
+    case 'MONITOR_GET_ALERTS':
+      return getAlerts(message.limit, message.unreadOnly);
+
+    case 'MONITOR_MARK_ALERT_READ':
+      return markAlertRead(message.alertId);
+
+    case 'MONITOR_MARK_ALL_READ':
+      return markAllAlertsRead();
+
+    case 'MONITOR_CLEAR_ALERTS':
+      return clearAlerts();
+
+    case 'MONITOR_GET_SETTINGS':
+      return getMonitorSettings();
+
+    case 'MONITOR_SAVE_SETTINGS': {
+      const result = await saveMonitorSettings(message.settings);
+      await registerMonitorAlarm(); // re-register alarm with new interval
+      return result;
+    }
+
+    case 'MONITOR_CHECK_NOW':
+      return executeMonitorCheck();
+
+    case 'SCRAPER_PRODUCT_CAPTURED': {
+      // Product data captured from content script – check if monitored
+      const products = await getMonitoredProducts();
+      const monitored = products.find(p => p.offerId === message.product.offerId);
+      if (monitored && monitored.enabled) {
+        const { hasChanges, changes } = await detectChanges(monitored.offerId, message.product);
+        await saveSnapshot(monitored.offerId, message.product);
+        if (hasChanges) {
+          await createAlert(monitored.offerId, monitored.title, changes);
+          const settings = await getMonitorSettings();
+          if (settings.enableNotifications) {
+            chrome.notifications.create(`monitor_${monitored.offerId}_${Date.now()}`, {
+              type: 'basic',
+              iconUrl: '/icons/icon128.png',
+              title: `Zmiana: ${monitored.title.substring(0, 50)}`,
+              message: changes.map(c => `${c.field}: ${c.oldValue} -> ${c.newValue}`).join(', '),
+              priority: 2,
+            });
+          }
+        }
+      }
+      return { success: true };
+    }
+
+    case 'SCRAPER_LISTING_CAPTURED':
+      // Listing data captured – store for potential analysis
+      return { success: true, itemCount: message.itemCount };
+
+    case 'SCRAPER_SELLER_CAPTURED':
+      return { success: true };
 
     default:
       return { success: false, error: `Unknown message type: ${message.type}` };

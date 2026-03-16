@@ -3,9 +3,11 @@ import Dashboard from './Dashboard.jsx';
 import Scheduler from './Scheduler.jsx';
 import History from './History.jsx';
 import Settings from './Settings.jsx';
+import Monitor from './Monitor.jsx';
 
 const TABS = [
   { id: 'dashboard', label: 'CPC', icon: '⚡' },
+  { id: 'monitor',   label: 'Scraper', icon: '🔍' },
   { id: 'scheduler', label: 'Harmonogram', icon: '🕐' },
   { id: 'history',   label: 'Historia', icon: '📋' },
   { id: 'settings',  label: 'Ustawienia', icon: '⚙️' },
@@ -73,6 +75,7 @@ export default function App() {
 
       <div className="tab-content">
         {activeTab === 'dashboard' && <Dashboard license={license} />}
+        {activeTab === 'monitor'   && <Monitor license={license} />}
         {activeTab === 'scheduler' && <Scheduler license={license} />}
         {activeTab === 'history'   && <History license={license} />}
         {activeTab === 'settings'  && <Settings license={license} onLicenseChange={setLicense} />}
